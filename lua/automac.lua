@@ -16,11 +16,14 @@ end
 function M.synthesize()
     print("Synthesizing with inputs: " .. table.concat(inputs, ", ") .. " and outputs: " .. table.concat(outputs, ", "))
     synth_fn = automac_lib.synthesize{inputs = inputs, outputs = outputs}
+    if synth_fn == nil then
+        print("Synthesis failed")
+    end
 end
 
 function M.run(inp)
     if synth_fn == nil then
-        error("Synthesize first")
+        print("Synthesize first")
     end
     return synth_fn(inp)
 end

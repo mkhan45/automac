@@ -9,10 +9,14 @@ pub fn synthesize<'lua>(lua: &'lua Lua, spec: LuaTable<'lua>) -> LuaResult<LuaVa
         (Lit::StringConst(inp.to_string()), Lit::StringConst(out.to_string()))
     }).collect();
 
-    let synthesized = synthesizer::enumerative::duet(&examples);
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let synthesized = synthesizer::enumerative::duet(&examples);
+        tx.send(synthesized).unwrap();
+    });
 
-    match synthesized {
-        Some(synth) => {
+    match rx.recv_timeout(std::time::Duration::from_secs(4)) {
+        Ok(Some(synth)) => {
             let eval = lua.create_function(move |lua, inp: String| {
                 match synth.eval(&Lit::StringConst(inp)) {
                     Lit::StringConst(s) => Ok(LuaValue::String(lua.create_string(&s)?)),
@@ -23,7 +27,7 @@ pub fn synthesize<'lua>(lua: &'lua Lua, spec: LuaTable<'lua>) -> LuaResult<LuaVa
             })?;
             Ok(LuaValue::Function(eval))
         },
-        None => {
+        _ => {
             Ok(LuaNil)
         }
     }
